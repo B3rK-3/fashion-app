@@ -16,7 +16,8 @@ type IconSymbolName = keyof typeof MAPPING;
 const MAPPING = {
   'house.fill': 'home',
   'person.crop.circle': 'account-circle',
-  'plus.circle': 'add-circle'
+  'plus.circle': 'add-circle',
+  'camera.shutter.button': "brightness-1"
 } as IconMapping;
 
 /**
