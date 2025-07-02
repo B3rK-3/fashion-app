@@ -2,6 +2,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { Camera, CameraView } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
+import { Image } from "expo-image";
 import {
     SafeAreaView,
     StyleSheet,
@@ -10,9 +11,13 @@ import {
     useColorScheme,
     View,
 } from "react-native";
+import { fetch } from "expo/fetch";
+import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
 
 export default function addWardrobe() {
     const colorScheme = useColorScheme();
+    const [image, setImage] = useState<string | null>(null);
     const camera = useRef<CameraView | null>(null);
     const [hasPermission, setHasPermission] = useState<null | boolean>(null);
     useEffect(() => {
@@ -35,8 +40,41 @@ export default function addWardrobe() {
             );
         }
         (async () => {
-            const a  = await camera.current?.takePictureAsync();
-            console.log(a?.uri)
+            const a = await camera.current?.takePictureAsync({ base64: true });
+            if (a?.base64) {
+                const img_str = a.base64;
+                const localURI = FileSystem.cacheDirectory + "example.jpg";
+                console.log("process");
+                fetch("http://192.168.137.1:5000/process", {
+                    method: "POST",
+                    body: JSON.stringify({ img: img_str }),
+                    headers: {},
+                })
+                    .then((res) => res.text())
+                    .then((base64_str) => {
+                        // console.log(base64_str);
+                        const img = FileSystem.writeAsStringAsync(
+                            localURI,
+                            base64_str,
+                            {
+                                encoding: FileSystem.EncodingType.Base64,
+                            }
+                        );
+                        console.log("imageFetched");
+                        return img;
+                    })
+                    .then(async () => {
+                        setImage(localURI);
+                        console.log("imageWrittn");
+                        console.log(localURI);
+                        FileSystem.getInfoAsync(localURI).then((res) => {
+                            console.log(res);
+                        });
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                    });
+            }
         })();
     };
     return (
