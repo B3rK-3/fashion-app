@@ -1,111 +1,108 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from "react";
+import {
+    StyleSheet,
+    View,
+    TouchableOpacity,
+    ActivityIndicator,
+} from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { useRouter } from "expo-router";
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { deleteAllTokens } from "../functions";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function TabTwoScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={100}
-          color="#0000"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }
-      >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
-  );
+export default function ProfileScreen() {
+    const insets = useSafeAreaInsets();
+    const router = useRouter();
+    const [email, setEmail] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [signingOut, setSigningOut] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const e = await SecureStore.getItemAsync("email");
+                setEmail(e);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, []);
+
+    const onSignOut = async () => {
+        if (signingOut) return;
+        setSigningOut(true);
+        try {
+            await deleteAllTokens();
+            // Kick back to root to trigger the auth gate to re-run
+            console.log("Email:", SecureStore.getItem("email"));
+            router.replace("/(auth)/login"); // Root will now render (auth)
+        } finally {
+            setSigningOut(false);
+        }
+    };
+
+    return (
+        <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+            <View style={styles.header}>
+                <ThemedText type="title">Profile</ThemedText>
+            </View>
+
+            <View style={styles.card}>
+                <ThemedText type="defaultSemiBold" style={styles.label}>
+                    Email
+                </ThemedText>
+                {loading ? (
+                    <ActivityIndicator />
+                ) : (
+                    <ThemedText style={styles.emailText}>
+                        {email ?? "Not set"}
+                    </ThemedText>
+                )}
+            </View>
+
+            <TouchableOpacity
+                style={styles.signOutBtn}
+                onPress={onSignOut}
+                disabled={signingOut}
+            >
+                {signingOut ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <ThemedText style={styles.signOutText}>Sign out</ThemedText>
+                )}
+            </TouchableOpacity>
+        </ThemedView>
+    );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#ff',
-    bottom: 0,
-    left: -10,
-    position: 'absolute',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+    mainContainer: {
+        flex: 1,
+    },
+    container: { flex: 1, padding: 16, gap: 16 },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+    card: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "rgba(127,127,127,0.25)",
+        gap: 6,
+    },
+    label: { opacity: 0.7 },
+    emailText: { fontSize: 16 },
+    signOutBtn: {
+        marginTop: "auto",
+        backgroundColor: "#ef4444",
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: "center",
+    },
+    signOutText: { color: "#fff", fontWeight: "700" },
 });
